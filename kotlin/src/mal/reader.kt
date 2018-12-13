@@ -81,7 +81,7 @@ class Reader(private val tokens: List<Token>) {
 
 }
 
-fun readStr(code: String) : MalType? {
+fun readStr(code: String) : MalType {
 
     val tokens = tokenize(code)
     val reader = Reader(tokens)

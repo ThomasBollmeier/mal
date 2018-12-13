@@ -6,12 +6,7 @@ fun eval(obj: MalType) = obj
 
 fun print(obj: MalType)  = printStr(obj)
 
-fun rep(s: String) : String {
-    val obj = read(s)
-    return if (obj != null) {
-        print(eval(obj))
-    } else ""
-}
+fun rep(s: String) : String = print(eval(read(s)))
 
 
 fun main(args: Array<String>) {
