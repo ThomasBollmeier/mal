@@ -1,6 +1,7 @@
-SOURCES_LISP = step0_repl.kt step1_read_print.kt reader.kt printer.kt types.kt
+SOURCES_BASE = reader.kt printer.kt types.kt
+SOURCES_LISP = step0_repl.kt step1_read_print.kt
 
-SOURCES = $(SOURCES_LISP)
+SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 JARS = $(SOURCES_LISP:%.kt=%.jar)
 
 all: $(JARS)

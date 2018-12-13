@@ -1,4 +1,4 @@
-package mal
+package mal0
 
 fun READ(s: String) = s
 

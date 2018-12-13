@@ -1,7 +1,18 @@
 package mal
 
 enum class TokenType {
-    LIST_BEGIN, LIST_END, OTHER
+    LPAR,
+    RPAR,
+    LSQBR,
+    RSQBR,
+    LBRACE,
+    RBRACE,
+    NUMBER,
+    STRING,
+    NIL,
+    TRUE,
+    FALSE,
+    OTHER
 }
 
 data class Token(val type: TokenType, val value: String)
@@ -10,57 +21,60 @@ class Reader(private val tokens: List<Token>) {
 
     private var currPos = 0
 
-    fun next() : Token? = if (currPos < tokens.size) {
+    private fun next() : Token? = if (currPos < tokens.size) {
         tokens[currPos++]
     } else null
 
-    fun peek() : Token? = if (currPos < tokens.size) {
+    private fun peek() : Token? = if (currPos < tokens.size) {
         tokens[currPos]
     } else null
 
-    fun readForm() : MalType? {
+    fun readForm() : MalType {
 
-        val token = peek()
-        if (token == null) {
-            return null
-        }
+        val token = peek() ?: return MalError("EOF")
 
         return when (token.type) {
-            TokenType.LIST_BEGIN -> readList()
+            TokenType.LPAR, TokenType.LSQBR, TokenType.LBRACE -> readCollection(token.type)
             else -> readAtom(token)
         }
 
     }
 
-    fun readList() : MalList? {
+    private fun readCollection(startType: TokenType) : MalType {
 
         next()
 
         val elements = mutableListOf<MalType>()
+        val endType = when(startType) {
+            TokenType.LPAR -> TokenType.RPAR
+            TokenType.LSQBR -> TokenType.RSQBR
+            TokenType.LBRACE -> TokenType.RBRACE
+            else -> TokenType.OTHER
+        }
 
         while (true) {
 
-            var token = peek()
-            if (token == null) return null
+            val token = peek() ?: return MalError("EOF")
 
-            var element = when (token.type) {
-                TokenType.LIST_END -> return MalList(elements)
+            val element = when (token.type) {
+                endType -> return MalList(elements)
                 else -> readForm()
             }
 
-            if (element == null) return null
+            if (element is MalError) return element
             elements += element
 
         }
 
     }
 
-    fun readAtom(token: Token) : MalType {
+    private fun readAtom(token: Token) : MalType {
+
         next()
-        val number = token.value.toIntOrNull()
-        return when (number) {
-            null -> MalSymbol(token.value)
-            else -> MalNumber(number)
+
+        return when (token.type) {
+            TokenType.NUMBER -> MalNumber(token.value.toInt())
+            else -> MalSymbol(token.value)
         }
 
     }
@@ -85,12 +99,20 @@ fun tokenize(code: String) : List<Token> {
 
     for (matchResult in regex.findAll(code)) {
 
-        val value = matchResult.value.trim()
-        if (value.isEmpty()) continue
+        val value = matchResult.groupValues[1]
 
-        val type = when (value) {
-            "(" -> TokenType.LIST_BEGIN
-            ")" -> TokenType.LIST_END
+        val type = when {
+            value == "(" -> TokenType.LPAR
+            value == ")" -> TokenType.RPAR
+            value == "[" -> TokenType.LSQBR
+            value == "]" -> TokenType.RSQBR
+            value == "{" -> TokenType.LBRACE
+            value == "}" -> TokenType.RBRACE
+            value.isNumber() -> TokenType.NUMBER
+            value.isString() -> TokenType.STRING
+            value == "nil" -> TokenType.NIL
+            value == "true" -> TokenType.TRUE
+            value == "false" -> TokenType.FALSE
             else -> TokenType.OTHER
         }
         result += Token(type, value)
@@ -99,3 +121,7 @@ fun tokenize(code: String) : List<Token> {
 
     return result
 }
+
+fun String.isNumber() = this.toIntOrNull() != null
+
+fun String.isString() : Boolean = this.isNotEmpty() && this[0] == '"'

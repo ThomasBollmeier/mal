@@ -1,15 +1,15 @@
 package mal
 
-fun READ(s: String) = readStr(s)
+fun read(s: String) = readStr(s)
 
-fun EVAL(obj: MalType) = obj
+fun eval(obj: MalType) = obj
 
-fun PRINT(obj: MalType)  = printStr(obj)
+fun print(obj: MalType)  = printStr(obj)
 
 fun rep(s: String) : String {
-    val obj = READ(s)
+    val obj = read(s)
     return if (obj != null) {
-        PRINT(EVAL(obj))
+        print(eval(obj))
     } else ""
 }
 
@@ -26,5 +26,4 @@ fun main(args: Array<String>) {
         }
 
     }
-
 }
