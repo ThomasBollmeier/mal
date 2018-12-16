@@ -74,8 +74,22 @@ class Reader(private val tokens: List<Token>) {
 
         return when (token.type) {
             TokenType.NUMBER -> MalNumber(token.value.toInt())
+            TokenType.STRING -> readString(token)
             else -> MalSymbol(token.value)
         }
+
+    }
+
+    private fun readString(token: Token) : MalType {
+
+        val lastChar = token.value[token.value.length - 1]
+        return if (lastChar == '"') {
+            var text = token.value.trim('"')
+            text = text.replace("\\n", "\n")
+            text = text.replace("\\\"", "\"")
+            text = text.replace("\\\\", "\\")
+            MalString(text.trim('"'))
+        } else MalError("No end of string (\") found")
 
     }
 
@@ -101,19 +115,21 @@ fun tokenize(code: String) : List<Token> {
 
         val value = matchResult.groupValues[1]
 
-        val type = when {
-            value == "(" -> TokenType.LPAR
-            value == ")" -> TokenType.RPAR
-            value == "[" -> TokenType.LSQBR
-            value == "]" -> TokenType.RSQBR
-            value == "{" -> TokenType.LBRACE
-            value == "}" -> TokenType.RBRACE
-            value.isNumber() -> TokenType.NUMBER
-            value.isString() -> TokenType.STRING
-            value == "nil" -> TokenType.NIL
-            value == "true" -> TokenType.TRUE
-            value == "false" -> TokenType.FALSE
-            else -> TokenType.OTHER
+        val type = when(value) {
+            "(" -> TokenType.LPAR
+            ")" -> TokenType.RPAR
+            "[" -> TokenType.LSQBR
+            "]" -> TokenType.RSQBR
+            "{" -> TokenType.LBRACE
+            "}" -> TokenType.RBRACE
+            "nil" -> TokenType.NIL
+            "true" -> TokenType.TRUE
+            "false" -> TokenType.FALSE
+            else -> when {
+                value.isNumber() -> TokenType.NUMBER
+                value.isString() -> TokenType.STRING
+                else -> TokenType.OTHER
+            }
         }
         result += Token(type, value)
 

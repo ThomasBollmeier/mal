@@ -21,6 +21,12 @@ class MalSymbol(private val value: String) : MalType() {
 
 }
 
+class MalString(private val value: String) : MalType() {
+
+    override fun toString() = value
+
+}
+
 class MalError(private val errorMsg: String) : MalType() {
 
     override fun toString() = errorMsg
