@@ -1,4 +1,6 @@
-package mal
+package mal1
+
+import mal.*
 
 fun read(s: String) = readStr(s)
 
