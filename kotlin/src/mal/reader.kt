@@ -57,7 +57,12 @@ class Reader(private val tokens: List<Token>) {
             val token = peek() ?: return MalError("EOF")
 
             val element = when (token.type) {
-                endType -> return MalList(elements)
+                endType -> return when (endType) {
+                    TokenType.RPAR -> MalList(elements)
+                    TokenType.RSQBR -> MalVector(elements)
+                    TokenType.RBRACE -> readHashMap(elements)
+                    else -> MalError("Unexpected token type")
+                }
                 else -> readForm()
             }
 
@@ -68,6 +73,20 @@ class Reader(private val tokens: List<Token>) {
 
     }
 
+    private fun readHashMap(elements: List<MalType>) : MalType {
+
+        if (elements.size % 2 != 0) return MalError("Numbers of keys and values do not match")
+
+        val keys = mutableListOf<MalType>()
+        val values = mutableListOf<MalType>()
+
+        for ((i, element) in elements.withIndex()) {
+            if (i % 2 == 0) keys += element else values += element
+        }
+
+        return MalHashMap(keys, values)
+    }
+
     private fun readAtom(token: Token) : MalType {
 
         next()
@@ -75,6 +94,9 @@ class Reader(private val tokens: List<Token>) {
         return when (token.type) {
             TokenType.NUMBER -> MalNumber(token.value.toInt())
             TokenType.STRING -> readString(token)
+            TokenType.TRUE -> MalBoolean(true)
+            TokenType.FALSE -> MalBoolean(false)
+            TokenType.NIL -> MalNil()
             else -> MalSymbol(token.value)
         }
 
@@ -84,11 +106,11 @@ class Reader(private val tokens: List<Token>) {
 
         val lastChar = token.value[token.value.length - 1]
         return if (lastChar == '"') {
-            var text = token.value.trim('"')
+            var text = token.value
             text = text.replace("\\n", "\n")
             text = text.replace("\\\"", "\"")
             text = text.replace("\\\\", "\\")
-            MalString(text.trim('"'))
+            MalString(text)
         } else MalError("No end of string (\") found")
 
     }
