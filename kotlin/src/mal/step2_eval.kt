@@ -1,7 +1,5 @@
 package mal
 
-typealias Env = HashMap<String, MalType>
-
 val replEnv : Env = hashMapOf(
         "+" to MalFunction add@ { xs ->
             if (xs.all { it is MalNumber }) {
@@ -35,33 +33,7 @@ val replEnv : Env = hashMapOf(
 
 fun read(s: String) = readStr(s)
 
-fun eval(ast: MalType, env: Env) : MalType {
-    return when(ast) {
-        !is MalList -> evalAst(ast, env)
-        else -> if (!ast.isEmpty()) {
-            val evaluated = evalAst(ast, env) as MalList
-            val fn = evaluated.elements[0]
-            val numArgs = evaluated.elements.size - 1
-            val args = (if (numArgs > 0)
-                evaluated.elements.subList(1, numArgs + 1)
-                else emptyList()).toTypedArray()
-            if (fn is MalFunction)
-                fn.call(args)
-                else MalError("expected function")
-        } else ast
-    }
-}
-
-fun evalAst(ast: MalType, env: Env) : MalType =
-    when (ast) {
-        is MalSymbol -> env.getOrDefault(ast.value,
-                MalError("${ast.value} not found"))
-        is MalList -> {
-            val evaluated = ast.elements.map { evalAst(it, env) }
-            MalList(evaluated)
-        }
-        else -> ast
-    }
+fun eval(ast: MalType, env: Env) = ast.eval(env)
 
 fun print(obj: MalType)  = printStr(obj)
 

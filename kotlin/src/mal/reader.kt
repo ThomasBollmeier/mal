@@ -57,11 +57,14 @@ class Reader(private val tokens: List<Token>) {
             val token = peek() ?: return MalError("EOF")
 
             val element = when (token.type) {
-                endType -> return when (endType) {
-                    TokenType.RPAR -> MalList(elements)
-                    TokenType.RSQBR -> MalVector(elements)
-                    TokenType.RBRACE -> readHashMap(elements)
-                    else -> MalError("Unexpected token type")
+                endType -> {
+                    next()
+                    return when (endType) {
+                        TokenType.RPAR -> MalList(elements)
+                        TokenType.RSQBR -> MalVector(elements)
+                        TokenType.RBRACE -> createHashMap(elements)
+                        else -> MalError("Unexpected token type")
+                    }
                 }
                 else -> readForm()
             }
@@ -73,7 +76,7 @@ class Reader(private val tokens: List<Token>) {
 
     }
 
-    private fun readHashMap(elements: List<MalType>) : MalType {
+    private fun createHashMap(elements: List<MalType>) : MalType {
 
         if (elements.size % 2 != 0) return MalError("Numbers of keys and values do not match")
 
