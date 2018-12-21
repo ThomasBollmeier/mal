@@ -1,6 +1,4 @@
-package mal2
-
-import mal.*
+package mal
 
 fun initGlobalEnv() : Env {
 
@@ -15,13 +13,13 @@ fun initGlobalEnv() : Env {
 }
 
 fun createArithmeticFun(binOp: (Int, Int) -> Int) =
-        MalFunction multOp@ { xs ->
-            if (xs.all { it is MalNumber }) {
-                val numbers = xs.map { it as MalNumber }
-                        .map { it.value }
-                return@multOp MalNumber(numbers.reduce(binOp))
-            } else MalError("unsupported operation" )
-        }
+    MalFunction multOp@ { xs ->
+        if (xs.all { it is MalNumber }) {
+            val numbers = xs.map { it as MalNumber }
+                    .map { it.value }
+            return@multOp MalNumber(numbers.reduce(binOp))
+        } else MalError("unsupported operation" )
+    }
 
 val replEnv = initGlobalEnv()
 
@@ -35,6 +33,19 @@ fun rep(s: String) : String = print(eval(read(s), replEnv))
 
 
 fun main(args: Array<String>) {
+
+    /*
+    var code = """
+        (def! x 41)
+    """.trimIndent()
+    println(rep(code))
+
+    code = "(+ x 1)"
+    println(rep(code))
+
+    code = "(let* (x 22 y 20) (+ x y))"
+    println(rep(code))
+    */
 
     while(true) {
 
