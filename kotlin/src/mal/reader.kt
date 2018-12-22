@@ -40,6 +40,14 @@ class Reader(private val tokens: List<Token>) {
 
     }
 
+    fun readForms() : List<MalType> {
+        val result = mutableListOf<MalType>()
+        do {
+            result += readForm()
+        } while (peek() != null)
+        return result
+    }
+
     private fun readCollection(startType: TokenType) : MalType {
 
         next()
@@ -120,12 +128,11 @@ class Reader(private val tokens: List<Token>) {
 
 }
 
-fun readStr(code: String) : MalType {
+fun readStr(code: String) : List<MalType> {
 
     val tokens = tokenize(code)
     val reader = Reader(tokens)
-    return reader.readForm()
-
+    return reader.readForms()
 }
 
 fun tokenize(code: String) : List<Token> {
@@ -139,6 +146,7 @@ fun tokenize(code: String) : List<Token> {
     for (matchResult in regex.findAll(code)) {
 
         val value = matchResult.groupValues[1]
+        if (value == "") continue
 
         val type = when(value) {
             "(" -> TokenType.LPAR

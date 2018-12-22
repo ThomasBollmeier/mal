@@ -2,7 +2,7 @@ package mal1
 
 import mal.*
 
-fun read(s: String) = readStr(s)
+fun read(s: String) = readStr(s)[0]
 
 fun eval(obj: MalType) = obj
 
