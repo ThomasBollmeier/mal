@@ -4,9 +4,22 @@ abstract class MalType  {
 
     open fun eval(env: Env) = this
 
+    override operator fun equals(other: Any?) =
+            if (other != null)
+                javaClass == other.javaClass
+            else
+                false
+
 }
 
-abstract class MalSequence(val elements: List<MalType>) : MalType()
+abstract class MalSequence(val elements: List<MalType>) : MalType() {
+
+    override fun equals(other: Any?) =
+            other != null && other is MalSequence && elements == other.elements
+
+    fun isEmpty() = elements.isEmpty()
+
+}
 
 class MalList(elements: List<MalType>) : MalSequence(elements) {
 
@@ -19,6 +32,9 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
         return when {
             isSpecialForm(first, "def!") -> evalDefinition(env)
             isSpecialForm(first, "let*") -> evalLet(env)
+            isSpecialForm(first, "do") -> evalDo(env)
+            isSpecialForm(first, "if") -> evalIf(env)
+            isSpecialForm(first, "fn*") -> evalLambda(env)
             else -> {
                 val firstEval = elements[0].eval(env)
                 when (firstEval) {
@@ -30,18 +46,16 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
 
     }
 
-    private fun isEmpty() = elements.isEmpty()
-
     private fun isSpecialForm(value: MalType, name: String) =
             value is MalSymbol && value.toString() == name
 
     private fun evalFunction(fn: MalFunction, env: Env) : MalType {
         val evaluated = elements.map { it.eval(env)}
         val numArgs = evaluated.size - 1
-        val args = (if (numArgs > 0)
+        val args = if (numArgs > 0)
             evaluated.subList(1, numArgs + 1)
         else
-            emptyList()).toTypedArray()
+            emptyList()
         return fn.apply(args)
     }
 
@@ -69,6 +83,95 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
                 }
             } else MalError("First argument in let expression must be a list")
         } else MalError("Too many arguments in let expression")
+    }
+
+    private fun evalDo(env: Env) : MalType {
+        var result: MalType = MalNil()
+        for (i in 1 until elements.size) {
+            result = elements[i].eval(env)
+        }
+        return result
+    }
+
+    private fun evalIf(env: Env) : MalType {
+
+        if (elements.size < 3 || elements.size > 4)
+            return MalError("invalid if expression")
+
+        val condValue = elements[1].eval(env)
+        val condition = when (condValue) {
+            is MalBoolean -> condValue.value
+            is MalNil -> false
+            else -> true
+        }
+
+        return when {
+            condition -> elements[2].eval(env)
+            elements.size == 4 -> elements[3].eval(env)
+            else -> MalNil()
+        }
+
+    }
+
+    private fun evalLambda(env: Env) : MalType {
+
+        if (elements.size != 3)
+            return MalError("invalid lambda expression")
+
+        val params = elements[1] as? MalSequence ?:
+            return MalError("invalid parameter format")
+
+        if (!params.elements.all { it is MalSymbol })
+            return MalError("invalid parameter format")
+
+        val paramNames = mutableListOf<String>()
+        var varargParam : String? = null
+
+        var varargPending = false
+        for (param in params.elements) {
+            val paramName = param.toString()
+            if (!varargPending) {
+                if (paramName != "&")
+                    paramNames += paramName
+                else
+                    varargPending = true
+            } else {
+                varargParam = paramName
+                break
+            }
+        }
+
+        val body = elements[2]
+
+        return MalFunction { args: List<MalType> ->
+
+            if (paramNames.size == args.size) {
+                if (varargParam == null)
+                    body.eval(Env(env, paramNames, args))
+                else {
+                    val bindings = mutableListOf<String>()
+                    bindings.addAll(paramNames)
+                    bindings.add(varargParam)
+                    val expressions =  mutableListOf<MalType>()
+                    expressions.addAll(args)
+                    expressions.add(MalList(emptyList()))
+                    body.eval(Env(env, bindings, expressions))
+                }
+            } else if (paramNames.size < args.size)
+                if (varargParam != null) {
+                    val bindings = mutableListOf<String>()
+                    bindings.addAll(paramNames)
+                    bindings.add(varargParam)
+                    val expressions = mutableListOf<MalType>()
+                    expressions.addAll(args.subList(0, paramNames.size))
+                    val varargExprs = args.subList(paramNames.size, args.size)
+                    expressions.add(MalList(varargExprs))
+                    body.eval(Env(env, bindings, expressions))
+                } else
+                    MalError("too many arguments given")
+            else
+                MalError("too few arguments given")
+        }
     }
 
     class BindingsError : Exception()
@@ -120,17 +223,33 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
         return sb.toString()
     }
 
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other) &&
+                (other as? MalHashMap)?.keys?.equals(keys) ?: false &&
+                (other as? MalHashMap)?.values?.equals(values) ?: false
+    }
+
 }
 
 class MalNumber(val value: Int) : MalType() {
 
     override fun toString() = value.toString()
 
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other) &&
+                (other as? MalNumber)?.value?.equals(value) ?: false
+    }
+
 }
 
-class MalBoolean(private val value: Boolean) : MalType() {
+class MalBoolean(val value: Boolean) : MalType() {
 
     override fun toString() = if (value) "true" else "false"
+
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other) &&
+                (other as? MalBoolean)?.value?.equals(value) ?: false
+    }
 
 }
 
@@ -150,19 +269,29 @@ class MalSymbol(private val value: String) : MalType() {
 
     override fun toString() = value
 
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other) &&
+                (other as? MalSymbol)?.value?.equals(value) ?: false
+    }
+
 }
 
 class MalString(private val value: String) : MalType() {
 
     override fun toString() = value
 
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other) &&
+                (other as? MalString)?.value?.equals(value) ?: false
+    }
+
 }
 
-class MalFunction(private val callable: (Array<MalType>) -> MalType) : MalType() {
+class MalFunction(private val callable: (List<MalType>) -> MalType) : MalType() {
 
     override fun toString() = "#<function>"
 
-    fun apply(args: Array<MalType> = emptyArray()) = callable(args)
+    fun apply(args: List<MalType>) = callable(args)
 
 }
 
