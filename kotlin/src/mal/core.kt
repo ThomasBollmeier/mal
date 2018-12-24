@@ -38,10 +38,12 @@ val ns = hashMapOf(
                 MalNumber(0)
         },
         "pr-str" to MalFunction { args ->
-            MalString(args.joinToString(" ") { printStr(it, true) })
+            val s = args.joinToString(" ") { printStr(it, true) }
+            MalString(s)
         },
         "str" to MalFunction { args ->
-            MalString(args.joinToString("") { printStr(it, false) })
+            val s = args.joinToString("") { it.toString() }
+            MalString(s)
         },
         "prn" to MalFunction { args ->
             println(args.joinToString(" ") { printStr(it, true) })

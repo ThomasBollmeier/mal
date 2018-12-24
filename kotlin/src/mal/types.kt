@@ -10,6 +10,8 @@ abstract class MalType  {
             else
                 false
 
+    open fun toString(readably: Boolean) = toString()
+
 }
 
 abstract class MalSequence(val elements: List<MalType>) : MalType() {
@@ -191,8 +193,10 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
         }
     }
 
-    override fun toString() = elements.joinToString(
-            separator = " ", prefix = "(", postfix = ")") { it.toString() }
+    override fun toString() = toString(false)
+
+    override fun toString(readably: Boolean) = elements.joinToString(
+            separator = " ", prefix = "(", postfix = ")") { it.toString(readably) }
 
 }
 
@@ -200,8 +204,10 @@ class MalVector(elements: List<MalType>) : MalSequence(elements) {
 
     override fun eval(env: Env) = MalVector(elements.map { it.eval(env) })
 
-    override fun toString() = elements.joinToString(
-            separator = " ", prefix = "[", postfix = "]") { it.toString() }
+    override fun toString() = toString(false)
+
+    override fun toString(readably: Boolean) = elements.joinToString(
+            separator = " ", prefix = "[", postfix = "]") { it.toString(readably) }
 
 }
 
@@ -209,15 +215,17 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
 
     override fun eval(env: Env) = MalHashMap(keys, values.map { it.eval(env)})
 
-    override fun toString() : String {
+    override fun toString() = toString(false)
+
+    override fun toString(readably: Boolean) : String {
         val sb = StringBuilder()
         sb.append('{')
         var first = true
         for ((i, key) in keys.withIndex()) {
             if (!first) sb.append(", ") else first = false
-            sb.append(key.toString())
+            sb.append(key.toString(readably))
             sb.append(" ")
-            sb.append(values[i].toString())
+            sb.append(values[i].toString(readably))
         }
         sb.append('}')
         return sb.toString()
@@ -276,23 +284,42 @@ class MalSymbol(private val value: String) : MalType() {
 
 }
 
-class MalString(s: String) : MalType() {
+class MalKeyword(private val value: String) : MalType() {
+
+    override fun toString() = value
+
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other) &&
+                (other as? MalKeyword)?.value?.equals(value) ?: false
+    }
+
+}
+
+class MalString(val value: String) : MalType() {
 
     companion object {
 
-        fun unescape(s: String) : String {
+        fun unquote(s: String) : String {
+
+            if (s.length <= 2) return ""
 
             val sb = StringBuilder()
             var previous : Char? = null
+            val chars = s.substring(1..(s.length-2))
 
-            for (ch in s.trim('"')) {
+            loop@ for (ch in chars) {
                 if (previous != '\\') {
                     if (ch != '\\')
                         sb.append(ch)
                 } else {
                     when (ch) {
                         'n' -> sb.append('\n')
-                        '\\', '\"' -> sb.append(ch)
+                        '\"' -> sb.append(ch)
+                        '\\' -> {
+                            sb.append(ch)
+                            previous = null
+                            continue@loop
+                        }
                         else -> {
                             sb.append(previous)
                             sb.append(ch)
@@ -306,11 +333,11 @@ class MalString(s: String) : MalType() {
             return sb.toString()
         }
 
-        fun escape(s: String) : String {
+        fun quote(s: String) : String {
 
             var res = s
-            res = res.replace("\n", "\\n")
             res = res.replace("\\", "\\\\")
+            res = res.replace("\n", "\\n")
             res = res.replace("\"", "\\\"")
             res = "\"$res\""
             return res
@@ -318,10 +345,14 @@ class MalString(s: String) : MalType() {
 
     }
 
-    private val value = MalString.unescape(s)
+    override fun toString() = toString(false)
 
-    override fun toString() = value
-    
+    override fun toString(readably: Boolean) =
+            if (readably)
+                MalString.quote(value)
+            else
+                value
+
     override fun equals(other: Any?): Boolean {
         return super.equals(other) &&
                 (other as? MalString)?.value?.equals(value) ?: false

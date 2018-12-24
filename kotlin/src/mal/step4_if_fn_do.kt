@@ -80,7 +80,7 @@ fun main(args: Array<String>) {
         */
 
         val code = """
-            "\n"
+            (= :abc :def)
         """.trimIndent()
         println(rep(code))
 

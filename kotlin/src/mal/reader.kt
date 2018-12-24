@@ -108,7 +108,10 @@ class Reader(private val tokens: List<Token>) {
             TokenType.TRUE -> MalBoolean(true)
             TokenType.FALSE -> MalBoolean(false)
             TokenType.NIL -> MalNil()
-            else -> MalSymbol(token.value)
+            else -> if (token.value.isNotEmpty() && token.value[0] == ':')
+                    MalKeyword(token.value)
+                else
+                    MalSymbol(token.value)
         }
 
     }
@@ -117,7 +120,7 @@ class Reader(private val tokens: List<Token>) {
 
         val lastChar = token.value[token.value.length - 1]
         return if (lastChar == '"')
-            MalString(token.value)
+            MalString(MalString.unquote(token.value))
         else
             MalError("No end of string (\") found")
 
