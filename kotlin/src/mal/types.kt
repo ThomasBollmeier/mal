@@ -276,10 +276,52 @@ class MalSymbol(private val value: String) : MalType() {
 
 }
 
-class MalString(private val value: String) : MalType() {
+class MalString(s: String) : MalType() {
+
+    companion object {
+
+        fun unescape(s: String) : String {
+
+            val sb = StringBuilder()
+            var previous : Char? = null
+
+            for (ch in s.trim('"')) {
+                if (previous != '\\') {
+                    if (ch != '\\')
+                        sb.append(ch)
+                } else {
+                    when (ch) {
+                        'n' -> sb.append('\n')
+                        '\\', '\"' -> sb.append(ch)
+                        else -> {
+                            sb.append(previous)
+                            sb.append(ch)
+                        }
+                    }
+                }
+
+                previous = ch
+            }
+
+            return sb.toString()
+        }
+
+        fun escape(s: String) : String {
+
+            var res = s
+            res = res.replace("\n", "\\n")
+            res = res.replace("\\", "\\\\")
+            res = res.replace("\"", "\\\"")
+            res = "\"$res\""
+            return res
+        }
+
+    }
+
+    private val value = MalString.unescape(s)
 
     override fun toString() = value
-
+    
     override fun equals(other: Any?): Boolean {
         return super.equals(other) &&
                 (other as? MalString)?.value?.equals(value) ?: false

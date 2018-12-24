@@ -116,25 +116,10 @@ class Reader(private val tokens: List<Token>) {
     private fun readString(token: Token) : MalType {
 
         val lastChar = token.value[token.value.length - 1]
-        return if (lastChar == '"') {
-
-            val pattern = """
-    	        (\\)|(\n)|(\")
-            """.trimIndent()
-            val regex = Regex(pattern)
-
-            val converted = token.value.replace(regex) {
-                mres -> with(mres) {
-                    when {
-                        groupValues[1].isNotEmpty() -> "\\"
-                        groupValues[2].isNotEmpty() -> "\n"
-                        groupValues[3].isNotEmpty() -> "\""
-                        else -> ""
-                    }
-                }
-            }
-            MalString(converted)
-        } else MalError("No end of string (\") found")
+        return if (lastChar == '"')
+            MalString(token.value)
+        else
+            MalError("No end of string (\") found")
 
     }
 
