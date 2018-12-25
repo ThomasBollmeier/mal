@@ -5,11 +5,14 @@
 (sum-to 10)
 ;=>55
 
+(def! sum2 (fn* (n res) (if (= n 0) res (sum2 (- n 1) (+ res n)))))
+(def! sum-to-2 (n) (sum2 n 0))
+
 ;;; no try* yet, so test completion of side-effects
 (def! res1 nil)
 ;=>nil
 ;;; For implementations without their own TCO this should fail and
 ;;; leave res1 unchanged
-(def! res1 (sum-to 10000))
+(def! res1 (sum-to-2 10000))
 res1
 ;=>nil

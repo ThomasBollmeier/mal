@@ -5,29 +5,29 @@ val ns = hashMapOf(
         "-" to createArithmeticFun { a, b -> a - b},
         "*" to createArithmeticFun { a, b -> a * b},
         "/" to createArithmeticFun { a, b -> a / b},
-        "=" to MalFunction { args ->
+        "=" to MalFunction.builtin { args ->
             MalBoolean(args.size == 2 && args[0] == args[1])
         },
         "<" to createComparisonFun { a, b -> a < b },
         "<=" to createComparisonFun { a, b -> a <= b },
         ">" to createComparisonFun { a, b -> a > b },
         ">=" to createComparisonFun { a, b -> a >= b },
-        "prn" to MalFunction { args ->
+        "prn" to MalFunction.builtin { args ->
             args.forEach { println(printStr(it, true)) }
             MalNil()
         },
-        "list" to MalFunction { args -> MalList(args) },
-        "list?" to MalFunction { args ->
+        "list" to MalFunction.builtin { args -> MalList(args) },
+        "list?" to MalFunction.builtin { args ->
             MalBoolean(args.size == 1 && args[0] is MalList)
         },
-        "empty?" to MalFunction { args ->
+        "empty?" to MalFunction.builtin { args ->
             if (args.size == 1) {
                 val arg = args[0]
                 MalBoolean(arg is MalSequence && arg.isEmpty())
             } else
                 MalBoolean(false)
         },
-        "count" to MalFunction { args ->
+        "count" to MalFunction.builtin { args ->
             if (args.size == 1) {
                 val arg = args[0]
                 if (arg is MalSequence)
@@ -37,26 +37,26 @@ val ns = hashMapOf(
             } else
                 MalNumber(0)
         },
-        "pr-str" to MalFunction { args ->
+        "pr-str" to MalFunction.builtin { args ->
             val s = args.joinToString(" ") { printStr(it, true) }
             MalString(s)
         },
-        "str" to MalFunction { args ->
+        "str" to MalFunction.builtin { args ->
             val s = args.joinToString("") { it.toString() }
             MalString(s)
         },
-        "prn" to MalFunction { args ->
+        "prn" to MalFunction.builtin { args ->
             println(args.joinToString(" ") { printStr(it, true) })
             MalNil()
         },
-        "println" to MalFunction { args ->
+        "println" to MalFunction.builtin { args ->
             println(args.joinToString(" ") { printStr(it, false) })
     MalNil()
         }
 )
 
 fun createArithmeticFun(binOp: (Int, Int) -> Int) =
-        MalFunction multOp@ { xs ->
+        MalFunction.builtin multOp@ { xs ->
             if (xs.all { it is MalNumber }) {
                 val numbers = xs.map { it as MalNumber }.map { it.value }
                 return@multOp MalNumber(numbers.reduce(binOp))
@@ -64,7 +64,7 @@ fun createArithmeticFun(binOp: (Int, Int) -> Int) =
         }
 
 fun createComparisonFun(binOp: (Int, Int) -> Boolean) =
-        MalFunction multOp@ { xs ->
+        MalFunction.builtin multOp@ { xs ->
             if (xs.all { it is MalNumber }) {
                 val numbers = xs.map { it as MalNumber
                 }.map { it.value }
