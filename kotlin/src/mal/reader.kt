@@ -12,6 +12,7 @@ enum class TokenType {
     NIL,
     TRUE,
     FALSE,
+    COMMENT,
     OTHER
 }
 
@@ -35,7 +36,7 @@ class Reader(private val tokens: List<Token>) {
 
         return when (token.type) {
             TokenType.LPAR, TokenType.LSQBR, TokenType.LBRACE -> readCollection(token.type)
-            else -> readAtom(token)
+            else -> readSimple(token)
         }
 
     }
@@ -98,7 +99,7 @@ class Reader(private val tokens: List<Token>) {
         return MalHashMap(keys, values)
     }
 
-    private fun readAtom(token: Token) : MalType {
+    private fun readSimple(token: Token) : MalType {
 
         next()
 
@@ -158,6 +159,7 @@ fun tokenize(code: String) : List<Token> {
             "nil" -> TokenType.NIL
             "true" -> TokenType.TRUE
             "false" -> TokenType.FALSE
+            ";" -> TokenType.COMMENT
             else -> when {
                 value.isNumber() -> TokenType.NUMBER
                 value.isString() -> TokenType.STRING

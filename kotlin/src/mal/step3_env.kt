@@ -15,7 +15,7 @@ fun initGlobalEnv() : Env {
 }
 
 fun createArithmeticFun(binOp: (Int, Int) -> Int) =
-    MalFunction multOp@ { xs ->
+    MalFunction.builtin multOp@ { xs ->
         if (xs.all { it is MalNumber }) {
             val numbers = xs.map { it as MalNumber }
                     .map { it.value }

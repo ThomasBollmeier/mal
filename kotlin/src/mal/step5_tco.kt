@@ -1,4 +1,6 @@
-package mal
+package mal5
+
+import mal.*
 
 fun initGlobalEnv() : Env {
 

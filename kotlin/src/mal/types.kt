@@ -398,6 +398,21 @@ class MalFunction(private val callable: (List<MalType>) -> EvalResult) : MalType
 
     fun apply(args: List<MalType>) = callable(args)
 
+    fun applyWithResult(args: List<MalType>) : MalType {
+        val evalResult = apply(args)
+        return if (evalResult.result != null)
+            evalResult.result
+        else
+            evalResult.type!!.eval(evalResult.env!!)
+    }
+
+}
+
+class MalAtom(var value: MalType) : MalType() {
+
+    override fun toString(readably: Boolean) =
+            "(atom ${value.toString(readably)})"
+
 }
 
 class MalError(private val errorMsg: String) : MalType() {

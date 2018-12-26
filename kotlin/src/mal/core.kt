@@ -1,5 +1,9 @@
 package mal
 
+import java.io.File
+
+class IllegalArgumentError : Exception()
+
 val ns = hashMapOf(
         "+" to createArithmeticFun { a, b -> a + b},
         "-" to createArithmeticFun { a, b -> a - b},
@@ -52,6 +56,51 @@ val ns = hashMapOf(
         "println" to MalFunction.builtin { args ->
             println(args.joinToString(" ") { printStr(it, false) })
     MalNil()
+        },
+        "read-string" to MalFunction.builtin {
+            val s = if (it.size == 1)
+                it[0] as? MalString ?: throw IllegalArgumentError()
+            else
+                throw IllegalArgumentError()
+            val types = readStr(s.value)
+
+            if (types.isNotEmpty())
+                types.last()
+            else
+                MalNil()
+        },
+        "slurp" to MalFunction.builtin {
+            val filePath = if (it.size == 1)
+                it[0] as? MalString ?: throw IllegalArgumentError()
+            else
+                throw IllegalArgumentError()
+
+            MalString(File(filePath.value).readText())
+        },
+        "atom" to MalFunction.builtin {
+            MalAtom(it[0])
+        },
+        "atom?" to MalFunction.builtin {
+            MalBoolean(it[0] is MalAtom)
+        },
+        "deref" to MalFunction.builtin {
+            val atom = it[0] as? MalAtom ?: throw IllegalArgumentError()
+            atom.value
+        },
+        "reset!" to MalFunction.builtin {
+            if (it.size != 2) throw IllegalArgumentError()
+            val atom = it[0] as? MalAtom ?: throw IllegalArgumentError()
+            atom.value = it[1]
+            atom.value
+        },
+        "swap!" to MalFunction.builtin {
+            if (it.size < 2) throw IllegalArgumentError()
+            val atom = it[0] as? MalAtom ?: throw IllegalArgumentError()
+            val fn = it[1] as? MalFunction ?: throw IllegalArgumentError()
+            val args = mutableListOf(atom.value)
+            if (it.size > 2) args.addAll(it.subList(2, it.size))
+            atom.value = fn.applyWithResult(args)
+            atom.value
         }
 )
 
