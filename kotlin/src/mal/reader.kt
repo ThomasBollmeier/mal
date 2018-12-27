@@ -12,7 +12,6 @@ enum class TokenType {
     NIL,
     TRUE,
     FALSE,
-    COMMENT,
     OTHER
 }
 
@@ -147,7 +146,7 @@ fun tokenize(code: String) : List<Token> {
     for (matchResult in regex.findAll(code)) {
 
         val value = matchResult.groupValues[1]
-        if (value == "") continue
+        if (value.isBlank() || value.isComment()) continue
 
         val type = when(value) {
             "(" -> TokenType.LPAR
@@ -159,7 +158,6 @@ fun tokenize(code: String) : List<Token> {
             "nil" -> TokenType.NIL
             "true" -> TokenType.TRUE
             "false" -> TokenType.FALSE
-            ";" -> TokenType.COMMENT
             else -> when {
                 value.isNumber() -> TokenType.NUMBER
                 value.isString() -> TokenType.STRING
@@ -176,3 +174,5 @@ fun tokenize(code: String) : List<Token> {
 fun String.isNumber() = this.toIntOrNull() != null
 
 fun String.isString() : Boolean = this.isNotEmpty() && this[0] == '"'
+
+fun String.isComment() = this.isNotEmpty() && this[0] == ';'
