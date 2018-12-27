@@ -51,6 +51,17 @@ fun main(args: Array<String>) {
 
     } else {
 
+        if (args.isNotEmpty()) {
+            val filePath = args[0]
+            rep("(load-file \"$filePath\")")
+        }
+
+        val arguments = if (args.size > 1)
+            args.sliceArray(1 until args.size).map { read(it)[0] }
+        else
+            emptyList()
+        replEnv["*ARGV*"] = MalList(arguments)
+
         while(true) {
 
             print("user> ")

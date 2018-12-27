@@ -12,6 +12,7 @@ enum class TokenType {
     NIL,
     TRUE,
     FALSE,
+    AT,
     OTHER
 }
 
@@ -108,6 +109,15 @@ class Reader(private val tokens: List<Token>) {
             TokenType.TRUE -> MalBoolean(true)
             TokenType.FALSE -> MalBoolean(false)
             TokenType.NIL -> MalNil()
+            TokenType.AT -> {
+                val atom = readForm()
+                when (atom) {
+                    is MalError -> atom
+                    else -> MalList(listOf(
+                            MalSymbol("deref"),
+                            atom))
+                }
+            }
             else -> if (token.value.isNotEmpty() && token.value[0] == ':')
                     MalKeyword(token.value)
                 else
@@ -158,6 +168,7 @@ fun tokenize(code: String) : List<Token> {
             "nil" -> TokenType.NIL
             "true" -> TokenType.TRUE
             "false" -> TokenType.FALSE
+            "@" -> TokenType.AT
             else -> when {
                 value.isNumber() -> TokenType.NUMBER
                 value.isString() -> TokenType.STRING
