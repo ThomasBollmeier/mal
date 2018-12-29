@@ -35,10 +35,36 @@ abstract class MalType  {
 
 abstract class MalSequence(val elements: List<MalType>) : MalType() {
 
+    companion object {
+
+        fun concat(vararg lists: MalSequence) : MalList {
+            val allElements = mutableListOf<MalType>()
+            for (list in lists) {
+                allElements.addAll(list.elements)
+            }
+            return MalList(allElements)
+        }
+
+    }
+
     override fun equals(other: Any?) =
             other != null && other is MalSequence && elements == other.elements
 
     fun isEmpty() = elements.isEmpty()
+
+    fun cons(head: MalType) : MalList {
+        val newElements = mutableListOf<MalType>()
+        newElements.add(head)
+        newElements.addAll(elements)
+        return MalList(newElements)
+    }
+
+    fun head() = elements.first()
+
+    fun tail() = if (elements.isNotEmpty())
+        MalList(elements.drop(1))
+    else
+        MalList(emptyList())
 
 }
 
@@ -56,6 +82,8 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
             isSpecialForm(first, "do") -> evalDo(env)
             isSpecialForm(first, "if") -> evalIf(env)
             isSpecialForm(first, "fn*") -> evalLambda(env)
+            isSpecialForm(first, "quote") -> elements[1].toResult()
+            isSpecialForm(first, "quasiquote") -> evalQuasiQuote(env)
             else -> {
                 val firstEval = elements[0].eval(env)
                 when (firstEval) {
@@ -199,6 +227,7 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
             else
                 MalError("too few arguments given").toResult()
         }.toResult()
+
     }
 
     class BindingsError : Exception()
@@ -214,6 +243,71 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
                 } else throw BindingsError()
             } else {
                 env[symbol] = elem.eval(env)
+            }
+        }
+    }
+
+    private fun evalQuasiQuote(env: Env) : EvalResult {
+
+        val arg = elements[1]
+        if (arg !is MalSequence || arg.isEmpty()) {
+            return EvalResult(
+                    null,
+                    MalList(listOf(MalSymbol("quote"), arg)),
+                    env)
+        }
+
+        val head = arg.head()
+
+        return when (head) {
+            is MalSequence -> {
+                val first = head.head()
+                when (first) {
+                    MalSymbol("unquote") -> {
+                        val type = MalList(listOf(
+                                MalSymbol("cons"),
+                                head.tail().head(),
+                                MalList(listOf(
+                                        MalSymbol("quasiquote"),
+                                        arg.tail()))))
+                        EvalResult(null, type, env)
+                    }
+                    MalSymbol("splice-unquote") -> {
+                        val type = MalList(listOf(
+                                MalSymbol("concat"),
+                                head.tail().head(),
+                                MalList(listOf(
+                                        MalSymbol("quasiquote"),
+                                        arg.tail()))))
+                        EvalResult(null, type, env)
+                    }
+                    else -> {
+                        val type = MalList(listOf(
+                                MalSymbol("cons"),
+                                MalList(listOf(
+                                        MalSymbol("quasiquote"),
+                                        head)),
+                                MalList(listOf(
+                                        MalSymbol("quasiquote"),
+                                        arg.tail()))))
+                        EvalResult(null, type, env)
+                    }
+                }
+            }
+            MalSymbol("unquote"), MalSymbol("splice-unquote") -> {
+                val type = arg.tail().head()
+                EvalResult(null, type, env)
+            }
+            else -> {
+                val type = MalList(listOf(
+                        MalSymbol("cons"),
+                        MalList(listOf(
+                                MalSymbol("quasiquote"),
+                                head)),
+                        MalList(listOf(
+                                MalSymbol("quasiquote"),
+                                arg.tail()))))
+                EvalResult(null, type, env)
             }
         }
     }

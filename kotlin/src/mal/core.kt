@@ -101,6 +101,17 @@ val ns = hashMapOf(
             if (it.size > 2) args.addAll(it.subList(2, it.size))
             atom.value = fn.applyWithResult(args)
             atom.value
+        },
+        "cons" to MalFunction.builtin {
+            val head = it[0]
+            val seq = it[1] as? MalSequence?: throw IllegalArgumentError()
+            seq.cons(head)
+        },
+        "concat" to MalFunction.builtin {
+            if (!it.all { lst -> lst is MalSequence }) throw IllegalArgumentError()
+
+            val seqs = it.map { seq -> seq as MalSequence }.toTypedArray()
+            MalSequence.concat(*seqs)
         }
 )
 

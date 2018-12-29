@@ -13,6 +13,10 @@ enum class TokenType {
     TRUE,
     FALSE,
     AT,
+    SINGLE_QUOTE,
+    BACK_TICK,
+    TILDE,
+    TILDE_AT,
     OTHER
 }
 
@@ -118,6 +122,18 @@ class Reader(private val tokens: List<Token>) {
                             atom))
                 }
             }
+            TokenType.SINGLE_QUOTE -> MalList(listOf(
+                    MalSymbol("quote"),
+                    readForm()))
+            TokenType.BACK_TICK -> MalList(listOf(
+                    MalSymbol("quasiquote"),
+                    readForm()))
+            TokenType.TILDE -> MalList(listOf(
+                    MalSymbol("unquote"),
+                    readForm()))
+            TokenType.TILDE_AT -> MalList(listOf(
+                    MalSymbol("splice-unquote"),
+                    readForm()))
             else -> if (token.value.isNotEmpty() && token.value[0] == ':')
                     MalKeyword(token.value)
                 else
@@ -169,6 +185,10 @@ fun tokenize(code: String) : List<Token> {
             "true" -> TokenType.TRUE
             "false" -> TokenType.FALSE
             "@" -> TokenType.AT
+            "'" -> TokenType.SINGLE_QUOTE
+            "`" -> TokenType.BACK_TICK
+            "~" -> TokenType.TILDE
+            "~@" -> TokenType.TILDE_AT
             else -> when {
                 value.isNumber() -> TokenType.NUMBER
                 value.isString() -> TokenType.STRING

@@ -1,6 +1,4 @@
-package mal6
-
-import mal.*
+package mal
 
 fun initGlobalEnv() : Env {
 
@@ -47,7 +45,7 @@ fun main(args: Array<String>) {
     if (test) {
 
         val code = """
-            (read-string "7 ;; comment")
+            (quasiquote (unquote 7))
         """.trimIndent()
         println(rep(code))
 
