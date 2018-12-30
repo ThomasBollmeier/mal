@@ -13,7 +13,9 @@ abstract class MalType  {
         
         while (true) {
             val evalResult = type.evalInternal(currEnv)
-            if (evalResult.result != null) return evalResult.result
+            if (evalResult.result != null) {
+                return evalResult.result
+            }
             type = evalResult.type!!
             currEnv = evalResult.env!!
         }
@@ -33,7 +35,7 @@ abstract class MalType  {
 
 }
 
-abstract class MalSequence(val elements: List<MalType>) : MalType() {
+abstract class MalSequence(public val elements: List<MalType>) : MalType() {
 
     companion object {
 
@@ -59,12 +61,17 @@ abstract class MalSequence(val elements: List<MalType>) : MalType() {
         return MalList(newElements)
     }
 
-    fun head() = elements.first()
+    fun head() = if (elements.isNotEmpty())
+        elements.first()
+    else
+        MalNil()
 
     fun tail() = if (elements.isNotEmpty())
         MalList(elements.drop(1))
     else
         MalList(emptyList())
+
+    fun nth(n: Int) = elements.getOrNull(n) ?: MalError("Index out of bounds")
 
 }
 
@@ -75,15 +82,22 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
         if (isEmpty()) return this.toResult()
 
         val first = elements[0]
+        if (isMacro(first, env)) {
+            return EvalResult(null,
+                    evalMacro(first as MalSymbol, env),
+                    env)
+        }
 
         return when {
             isSpecialForm(first, "def!") -> evalDefinition(env)
+            isSpecialForm(first, "defmacro!") -> evalDefinition(env, true)
             isSpecialForm(first, "let*") -> evalLet(env)
             isSpecialForm(first, "do") -> evalDo(env)
             isSpecialForm(first, "if") -> evalIf(env)
             isSpecialForm(first, "fn*") -> evalLambda(env)
             isSpecialForm(first, "quote") -> elements[1].toResult()
             isSpecialForm(first, "quasiquote") -> evalQuasiQuote(env)
+            isSpecialForm(first, "macroexpand") -> expandMacro(env)
             else -> {
                 val firstEval = elements[0].eval(env)
                 when (firstEval) {
@@ -98,6 +112,17 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
     private fun isSpecialForm(value: MalType, name: String) =
             value is MalSymbol && value.toString() == name
 
+    private fun isMacroCall(value: MalType, env: Env) =
+        value is MalList && !value.isEmpty() && isMacro(value.head(), env)
+
+    private fun isMacro(value: MalType, env: Env) : Boolean {
+        return if (value is MalSymbol) {
+            val evaluated = value.eval(env)
+            evaluated is MalFunction && evaluated.isMacro
+        } else
+            false
+    }
+
     private fun evalFunction(fn: MalFunction, env: Env) : EvalResult {
         val evaluated = elements.map { it.eval(env)}
         val numArgs = evaluated.size - 1
@@ -108,11 +133,36 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
         return fn.apply(args)
     }
 
-    private fun evalDefinition(env: Env) : EvalResult {
+    private fun evalMacro(macroSymbol: MalSymbol, env: Env) : MalType {
+        val macro = macroSymbol.eval(env) as MalFunction
+        val args = elements.drop(1)
+        return macro.applyWithResult(args)
+    }
+
+    private fun expandMacro(env: Env) : EvalResult {
+
+        var value = elements.drop(1).first()
+        while (isMacroCall(value, env)) {
+            val call = value as MalList
+            val macro = call.head().eval(env) as MalFunction
+            val args = call.elements.drop(1)
+            value = macro.applyWithResult(args)
+        }
+
+        return value.toResult()
+    }
+
+    private fun evalDefinition(env: Env, isMacro: Boolean = false) : EvalResult {
         val type = if (elements.size == 3) {
             val symbol = elements[1]
             if (symbol is MalSymbol) {
-                val value = elements[2].eval(env)
+                var value = elements[2].eval(env)
+                if (isMacro) {
+                    if (value is MalFunction)
+                        value.isMacro = true
+                    else
+                        value = MalError("defmacro! requires function as value")
+                }
                 if (value !is MalError) env[symbol.toString()] = value
                 value
             } else MalError("First argument in definition must be a symbol")
@@ -360,7 +410,7 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
 
 }
 
-class MalNumber(val value: Int) : MalType() {
+class MalNumber(public val value: Int) : MalType() {
 
     override fun toString() = value.toString()
 
@@ -481,7 +531,8 @@ class MalString(val value: String) : MalType() {
 
 }
 
-class MalFunction(private val callable: (List<MalType>) -> EvalResult) : MalType() {
+class MalFunction(public var isMacro: Boolean = false,
+                  private val callable: (List<MalType>) -> EvalResult) : MalType() {
 
     companion object {
         fun builtin(callable: (List<MalType>) -> MalType) =

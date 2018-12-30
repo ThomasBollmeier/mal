@@ -112,6 +112,30 @@ val ns = hashMapOf(
 
             val seqs = it.map { seq -> seq as MalSequence }.toTypedArray()
             MalSequence.concat(*seqs)
+        },
+        "nth" to MalFunction.builtin lambda@ {
+            if (it.size != 2) return@lambda MalError("Illegal #args")
+            val seq = it[0] as? MalSequence ?: return@lambda MalError("list expected")
+            val idx = it[1] as? MalNumber ?: return@lambda MalError("number expected")
+            seq.nth(idx.value)
+        },
+        "first" to MalFunction.builtin lambda@ {
+            if (it.size != 1) return@lambda MalError("Illegal #args")
+            val seq = it[0] as? MalSequence ?:
+                return@lambda if (it[0] is MalNil)
+                    MalNil()
+                else
+                    MalError("list expected")
+            seq.head()
+        },
+        "rest" to MalFunction.builtin lambda@ {
+            if (it.size != 1) return@lambda MalError("Illegal #args")
+            val seq = it[0] as? MalSequence ?:
+                return@lambda if (it[0] is MalNil)
+                    MalList(emptyList())
+                else
+                    MalError("list expected")
+            seq.tail()
         }
 )
 

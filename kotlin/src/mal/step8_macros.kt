@@ -1,6 +1,4 @@
-package mal7
-
-import mal.*
+package mal
 
 fun initGlobalEnv() : Env {
 
@@ -18,6 +16,29 @@ fun initGlobalEnv() : Env {
                             (str "(do " (slurp f) ")")))))
     """.trimIndent()), ret)
     ret["eval"] = MalFunction.builtin { eval(it, ret) }
+    ret["cond"] = eval(read("""
+        (defmacro! cond
+            (fn* (& xs)
+                (if (> (count xs) 0)
+                    (list 'if (first xs)
+                        (if (> (count xs) 1)
+                            (nth xs 1)
+                            (throw "odd number of forms to cond"))
+                        (cons 'cond
+                            (rest (rest xs)))))))
+    """.trimIndent()), ret)
+    ret["or"] = eval(read("""
+        (defmacro! or
+            (fn* (& xs)
+                (if (empty? xs)
+                    nil
+                    (if (= 1 (count xs))
+                        (first xs)
+                        `(let* (or_FIXME ~(first xs))
+                            (if or_FIXME
+                                or_FIXME
+                                (or ~@(rest xs))))))))
+    """.trimIndent()), ret)
 
     return ret
 }
@@ -47,7 +68,7 @@ fun main(args: Array<String>) {
     if (test) {
 
         val code = """
-            (quasiquote (unquote 7))
+            (nth (list 1 2) 2)
         """.trimIndent()
         println(rep(code))
 
