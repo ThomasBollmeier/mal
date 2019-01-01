@@ -136,6 +136,34 @@ val ns = hashMapOf(
                 else
                     MalError("list expected")
             seq.tail()
+        },
+        "throw" to MalFunction.builtin {
+            throw MalException(it[0])
+        },
+        "apply" to MalFunction.builtin lambda@{
+            val fn = it[0] as? MalFunction ?:
+                return@lambda MalError("function expected")
+            val lastArg = it.last() as MalSequence
+            val args = mutableListOf<MalType>()
+            for ((i, type) in it.withIndex()) {
+                if (i > 0 && i < it.size - 1) {
+                    args += type
+                }
+            }
+            args.addAll(lastArg.elements)
+            fn.applyWithResult(args)
+        },
+        "map" to MalFunction.builtin lambda@{
+            val fn = it[0] as? MalFunction ?:
+                return@lambda MalError("function expected")
+            val seq = it[1] as? MalSequence ?:
+                return@lambda MalError("sequence expected")
+
+            val mapped = seq.elements.map {
+                fn.applyWithResult(listOf(it))
+            }
+
+            MalList(mapped)
         }
 )
 

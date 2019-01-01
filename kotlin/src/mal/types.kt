@@ -4,6 +4,8 @@ class EvalResult( val result: MalType?,
                   val type: MalType? = null,
                   val env: Env? = null)
 
+class MalException(val type: MalType) : Exception()
+
 abstract class MalType  {
 
     fun eval(env: Env) : MalType {
@@ -98,11 +100,12 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
             isSpecialForm(first, "quote") -> elements[1].toResult()
             isSpecialForm(first, "quasiquote") -> evalQuasiQuote(env)
             isSpecialForm(first, "macroexpand") -> expandMacro(env)
+            isSpecialForm(first, "try*") -> evalTryCatch(env)
             else -> {
                 val firstEval = elements[0].eval(env)
                 when (firstEval) {
                     is MalFunction -> evalFunction(firstEval, env)
-                    else -> MalError("$first not found").toResult()
+                    else -> MalError("'$first' not found").toResult()
                 }
             }
         }
@@ -121,6 +124,39 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
             evaluated is MalFunction && evaluated.isMacro
         } else
             false
+    }
+
+    private fun evalTryCatch(env: Env) : EvalResult {
+        // (try* A (catch* B C))
+        if (elements.size != 3)
+            return MalError("Illegal number of args").toResult()
+
+        val tryExpr = elements[1]
+
+        val catchBlock = elements[2] as? MalList ?:
+            return MalError("catch block expected").toResult()
+        val catch = catchBlock.head()
+        if (catch !is MalSymbol && catch.toString() != "catch*")
+            return MalError("catch block expected").toResult()
+        val exception = catchBlock.tail().head() as? MalSymbol ?:
+            return MalError("exception must be symbol").toResult()
+        val catchExpr = catchBlock.tail().tail().head()
+
+        return try {
+            val res = tryExpr.eval(env).toResult()
+            if (res.result !is MalError) {
+                res
+            } else {
+                throw MalException(res.result)
+            }
+        } catch (exc: MalException) {
+            val error = MalError.fromException(exc)
+            val catchEnv = Env(env,
+                    listOf(exception.toString()),
+                    listOf(error))
+            catchExpr.eval(catchEnv).toResult()
+        }
+
     }
 
     private fun evalFunction(fn: MalFunction, env: Env) : EvalResult {
@@ -560,8 +596,16 @@ class MalAtom(var value: MalType) : MalType() {
 
 }
 
-class MalError(private val errorMsg: String) : MalType() {
+class MalError(private val errorMsg: String,
+               private val exception: MalException? = null) : MalType() {
 
-    override fun toString() = errorMsg
+    companion object {
+        fun fromException(exception: MalException) =
+                MalError("", exception)
+    }
+
+    override fun toString(readably: Boolean) =
+            exception?.type?.toString(readably) ?:
+            MalString(errorMsg).toString(readably)
 
 }

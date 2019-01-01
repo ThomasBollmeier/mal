@@ -1,6 +1,4 @@
-package mal8
-
-import mal.*
+package mal
 
 fun initGlobalEnv() : Env {
 
@@ -70,7 +68,7 @@ fun main(args: Array<String>) {
     if (test) {
 
         val code = """
-            (nth (list 1 2) 2)
+            (try* (abc 1 2) (catch* exc (prn "exc is:" exc)))
         """.trimIndent()
         println(rep(code))
 
