@@ -1,6 +1,6 @@
 package mal
 
-fun initGlobalEnv() : Env {
+fun initGlobalEnv(): Env {
 
     val ret = Env()
     for ((key, fn) in ns) {
@@ -48,52 +48,38 @@ val replEnv = initGlobalEnv()
 
 fun read(s: String) = readStr(s)
 
-fun eval(types: List<MalType>, env: Env) : MalType {
-    var result : MalType = MalNil()
+fun eval(types: List<MalType>, env: Env): MalType {
+    var result: MalType = MalNil()
     for (type in types) {
         result = type.eval(env)
     }
     return result
 }
 
-fun print(obj: MalType)  = printStr(obj)
+fun print(obj: MalType) = printStr(obj)
 
-fun rep(s: String) : String = print(eval(read(s), replEnv))
+fun rep(s: String): String = print(eval(read(s), replEnv))
 
 
 fun main(args: Array<String>) {
 
-    val test = false
+    if (args.isNotEmpty()) {
+        val filePath = args[0]
+        rep("(load-file \"$filePath\")")
+    }
 
-    if (test) {
+    val arguments = if (args.size > 1)
+        args.sliceArray(1 until args.size).map { read(it)[0] }
+    else
+        emptyList()
+    replEnv["*ARGV*"] = MalList(arguments)
 
-        val code = """
-            (try* (abc 1 2) (catch* exc (prn "exc is:" exc)))
-        """.trimIndent()
-        println(rep(code))
+    while (true) {
 
-    } else {
-
-        if (args.isNotEmpty()) {
-            val filePath = args[0]
-            rep("(load-file \"$filePath\")")
-        }
-
-        val arguments = if (args.size > 1)
-            args.sliceArray(1 until args.size).map { read(it)[0] }
-        else
-            emptyList()
-        replEnv["*ARGV*"] = MalList(arguments)
-
-        while(true) {
-
-            print("user> ")
-            val input = readLine()
-            if (input != null) {
-                val result = rep(input)
-                println(result)
-            }
-
+        print("user> ")
+        val input = readLine()
+        if (input != null) {
+            println(rep(input))
         }
 
     }

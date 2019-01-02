@@ -33,6 +33,10 @@ abstract class MalType  {
             else
                 false
 
+    override fun hashCode(): Int {
+        return toString().hashCode()
+    }
+
     open fun toString(readably: Boolean) = toString()
 
 }
@@ -419,6 +423,65 @@ class MalVector(elements: List<MalType>) : MalSequence(elements) {
 
 class MalHashMap(private val keys: List<MalType>, private val values: List<MalType>) : MalType() {
 
+    companion object {
+
+        private fun getKeysAndValues(map: MutableMap<MalType, MalType>)
+                : Pair<List<MalType>, List<MalType>>
+        {
+            val keys = mutableListOf<MalType>()
+            val values = mutableListOf<MalType>()
+
+            for ((k, v) in map.entries) {
+                keys += k
+                values += v
+            }
+
+            return keys to values
+        }
+
+    }
+
+    private val map : MutableMap<MalType, MalType>
+
+    init {
+        map = toMap()
+    }
+
+    fun assoc(keys: List<MalType>, values: List<MalType>) : MalHashMap {
+
+        val map = toMap()
+
+        for ((i, key) in keys.withIndex()) {
+            map[key] = values[i]
+        }
+
+        val (newKeys, newValues) = MalHashMap.getKeysAndValues(map)
+
+        return MalHashMap(newKeys, newValues)
+    }
+
+    fun dissoc(keys: List<MalType>) : MalHashMap {
+
+        val map = toMap()
+        for (key in keys) {
+            map.remove(key)
+        }
+
+        val (newKeys, newValues) = MalHashMap.getKeysAndValues(map)
+
+        return MalHashMap(newKeys, newValues)
+    }
+
+    fun get(key: MalType) = map.getOrDefault(key, MalNil())
+
+    fun hasKey(key: MalType) = map.containsKey(key)
+
+    fun keys() = MalList(keys)
+
+    fun values() = MalList(values)
+
+    fun count() = MalNumber(keys.size)
+
     override fun evalInternal(env: Env) =
             MalHashMap(keys, values.map { it.eval(env)}).toResult()
 
@@ -429,7 +492,7 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
         sb.append('{')
         var first = true
         for ((i, key) in keys.withIndex()) {
-            if (!first) sb.append(", ") else first = false
+            if (!first) sb.append(" ") else first = false
             sb.append(key.toString(readably))
             sb.append(" ")
             sb.append(values[i].toString(readably))
@@ -439,9 +502,21 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
     }
 
     override fun equals(other: Any?): Boolean {
-        return super.equals(other) &&
-                (other as? MalHashMap)?.keys?.equals(keys) ?: false &&
-                (other as? MalHashMap)?.values?.equals(values) ?: false
+
+        if (other !is MalHashMap) return false
+
+        val otherMap = other.toMap()
+
+        return toMap() == otherMap
+
+    }
+
+    private fun toMap() : MutableMap<MalType, MalType> {
+        val res = mutableMapOf<MalType, MalType>()
+        for ((i, key) in keys.withIndex()) {
+            res[key] = values[i]
+        }
+        return res
     }
 
 }

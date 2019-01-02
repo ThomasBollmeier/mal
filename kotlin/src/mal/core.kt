@@ -34,10 +34,11 @@ val ns = hashMapOf(
         "count" to MalFunction.builtin { args ->
             if (args.size == 1) {
                 val arg = args[0]
-                if (arg is MalSequence)
-                        MalNumber(arg.elements.size)
-                else
-                    MalNumber(0)
+                when (arg) {
+                    is MalSequence -> MalNumber(arg.elements.size)
+                    is MalHashMap -> arg.count()
+                    else -> MalNumber(0)
+                }
             } else
                 MalNumber(0)
         },
@@ -164,6 +165,131 @@ val ns = hashMapOf(
             }
 
             MalList(mapped)
+        },
+        "nil?" to MalFunction.builtin {
+            MalBoolean(it[0] is MalNil)
+        },
+        "true?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalBoolean && type.value)
+        },
+        "false?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalBoolean && !type.value)
+        },
+        "symbol?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalSymbol)
+        },
+        "symbol" to MalFunction.builtin {
+            val s = it[0] as MalString
+            MalSymbol(s.value)
+        },
+        "keyword?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalKeyword)
+        },
+        "keyword" to MalFunction.builtin {
+            val s = it[0] as MalString
+            MalKeyword(":${s.value}")
+        },
+        "vector" to MalFunction.builtin {
+            MalVector(it)
+        },
+        "vector?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalVector)
+        },
+        "sequential?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalSequence)
+        },
+        "map?" to MalFunction.builtin {
+            val type = it[0]
+            MalBoolean(type is MalHashMap)
+        },
+        "hash-map" to MalFunction.builtin lambda@{
+            if (it.size % 2 != 0)
+                return@lambda MalError("#args must be even")
+
+            val keys = mutableListOf<MalType>()
+            val values = mutableListOf<MalType>()
+
+            it.withIndex().forEach { (i, type) ->
+                if (i % 2 == 0)
+                    keys += type
+                else
+                    values += type
+            }
+
+            MalHashMap(keys, values)
+        },
+        "assoc" to MalFunction.builtin lambda@{
+            if (it.size % 2 != 1)
+                return@lambda MalError("#args must be odd")
+            if (it[0] !is MalHashMap)
+                return@lambda MalError("first arg must be a hash map")
+
+            val map = it[0] as MalHashMap
+            val keys = mutableListOf<MalType>()
+            val values = mutableListOf<MalType>()
+
+            it.drop(1).withIndex().forEach { (i, type) ->
+                if (i % 2 == 0)
+                    keys += type
+                else
+                    values += type
+            }
+
+            map.assoc(keys, values)
+        },
+        "dissoc" to MalFunction.builtin lambda@{
+            if (it[0] !is MalHashMap)
+                return@lambda MalError("first arg must be a hash map")
+
+            val map = it[0] as MalHashMap
+            val keys = it.drop(1)
+
+            map.dissoc(keys)
+        },
+        "get" to MalFunction.builtin lambda@{
+            if (it.size != 2)
+                return@lambda MalError("two args expected")
+            val first = it[0]
+            when (first) {
+                is MalHashMap -> first.get(it[1])
+                else -> MalNil()
+            }
+        },
+        "contains?" to MalFunction.builtin lambda@{
+            if (it.size != 2)
+                return@lambda MalError("two args expected")
+            if (it[0] !is MalHashMap)
+                return@lambda MalError("first arg must be a hash map")
+
+            val map = it[0] as MalHashMap
+
+            MalBoolean(map.hasKey(it[1]))
+        },
+        "keys" to MalFunction.builtin lambda@{
+            if (it.size != 1)
+                return@lambda MalError("one arg expected")
+            if (it[0] !is MalHashMap)
+                return@lambda MalError("arg must be a hash map")
+
+            val map = it[0] as MalHashMap
+
+            map.keys()
+        },
+        "vals" to MalFunction.builtin lambda@{
+            if (it.size != 1)
+                return@lambda MalError("one arg expected")
+            if (it[0] !is MalHashMap)
+                return@lambda MalError("arg must be a hash map")
+
+            val map = it[0] as MalHashMap
+
+            map.values()
         }
 )
 
