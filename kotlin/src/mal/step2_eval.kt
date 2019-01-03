@@ -25,7 +25,7 @@ fun createArithmeticFun(binOp: (Int, Int) -> Int) =
 
 val replEnv = initGlobalEnv()
 
-fun read(s: String) = readStr(s)
+fun read(s: String) = readStr(s).last()
 
 fun eval(ast: MalType, env: Env) = ast.eval(env)
 

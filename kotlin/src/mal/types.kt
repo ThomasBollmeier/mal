@@ -6,6 +6,11 @@ class EvalResult( val result: MalType?,
 
 class MalException(val type: MalType) : Exception()
 
+interface MalMetaDataContainer<T: MalType> {
+    val meta: MalType
+    fun withMeta(meta: MalType) : T
+}
+
 abstract class MalType  {
 
     fun eval(env: Env) : MalType {
@@ -41,7 +46,7 @@ abstract class MalType  {
 
 }
 
-abstract class MalSequence(public val elements: List<MalType>) : MalType() {
+abstract class MalSequence(val elements: List<MalType>) : MalType() {
 
     companion object {
 
@@ -81,7 +86,10 @@ abstract class MalSequence(public val elements: List<MalType>) : MalType() {
 
 }
 
-class MalList(elements: List<MalType>) : MalSequence(elements) {
+class MalList(elements: List<MalType>, override val meta: MalType = MalNil()) :
+        MalSequence(elements), MalMetaDataContainer<MalList> {
+
+    override fun withMeta(meta: MalType) = MalList(elements, meta)
 
     override fun evalInternal(env: Env): EvalResult {
 
@@ -409,7 +417,12 @@ class MalList(elements: List<MalType>) : MalSequence(elements) {
 
 }
 
-class MalVector(elements: List<MalType>) : MalSequence(elements) {
+class MalVector(elements: List<MalType>,
+                override val meta: MalType = MalNil()) :
+        MalSequence(elements), MalMetaDataContainer<MalVector> {
+
+    override fun withMeta(meta: MalType) =
+            MalVector(elements, meta)
 
     override fun evalInternal(env: Env): EvalResult =
             MalVector(elements.map { it.eval(env) }).toResult()
@@ -421,7 +434,10 @@ class MalVector(elements: List<MalType>) : MalSequence(elements) {
 
 }
 
-class MalHashMap(private val keys: List<MalType>, private val values: List<MalType>) : MalType() {
+class MalHashMap(private val keys: List<MalType>,
+                 private val values: List<MalType>,
+                 override val meta: MalType = MalNil()) :
+        MalType(), MalMetaDataContainer<MalHashMap> {
 
     companion object {
 
@@ -440,6 +456,9 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
         }
 
     }
+
+    override fun withMeta(meta: MalType) =
+            MalHashMap(keys, values, meta)
 
     private val map : MutableMap<MalType, MalType>
 
@@ -521,7 +540,7 @@ class MalHashMap(private val keys: List<MalType>, private val values: List<MalTy
 
 }
 
-class MalNumber(public val value: Int) : MalType() {
+class MalNumber(val value: Int) : MalType() {
 
     override fun toString() = value.toString()
 
@@ -642,15 +661,18 @@ class MalString(val value: String) : MalType() {
 
 }
 
-class MalFunction(public var isMacro: Boolean = false,
-                  private val callable: (List<MalType>) -> EvalResult) : MalType() {
+class MalFunction(var isMacro: Boolean = false,
+                  override val meta: MalType = MalNil(),
+                  private val callable: (List<MalType>) -> EvalResult) :
+        MalType(), MalMetaDataContainer<MalFunction> {
 
     companion object {
         fun builtin(callable: (List<MalType>) -> MalType) =
                 MalFunction { callable(it).toResult() }
     }
 
-    override fun toString() = "#<function>"
+    override fun withMeta(meta: MalType) =
+            MalFunction(this.isMacro, meta, this.callable)
 
     fun apply(args: List<MalType>) = callable(args)
 
@@ -661,6 +683,8 @@ class MalFunction(public var isMacro: Boolean = false,
         else
             evalResult.type!!.eval(evalResult.env!!)
     }
+
+    override fun toString() = "#<function>"
 
 }
 

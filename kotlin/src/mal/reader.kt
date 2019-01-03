@@ -17,6 +17,7 @@ enum class TokenType {
     BACK_TICK,
     TILDE,
     TILDE_AT,
+    CARET,
     OTHER
 }
 
@@ -134,6 +135,14 @@ class Reader(private val tokens: List<Token>) {
             TokenType.TILDE_AT -> MalList(listOf(
                     MalSymbol("splice-unquote"),
                     readForm()))
+            TokenType.CARET -> {
+                val meta = readForm()
+                val fn = readForm()
+                MalList(listOf(
+                        MalSymbol("with-meta"),
+                        fn,
+                        meta))
+            }
             else -> if (token.value.isNotEmpty() && token.value[0] == ':')
                     MalKeyword(token.value)
                 else
@@ -189,6 +198,7 @@ fun tokenize(code: String) : List<Token> {
             "`" -> TokenType.BACK_TICK
             "~" -> TokenType.TILDE
             "~@" -> TokenType.TILDE_AT
+            "^" -> TokenType.CARET
             else -> when {
                 value.isNumber() -> TokenType.NUMBER
                 value.isString() -> TokenType.STRING

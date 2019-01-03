@@ -1,6 +1,4 @@
-package mal9
-
-import mal.*
+package mal
 
 fun initGlobalEnv(): Env {
 
@@ -29,18 +27,26 @@ fun initGlobalEnv(): Env {
                         (cons 'cond
                             (rest (rest xs)))))))
     """.trimIndent()), ret)
-    ret["or"] = eval(read("""
+    ret["or"] = eval(read("""or
+        (def! *gensym-counter* (atom 0))
+        (def! gensym (fn* []
+            (symbol
+                (str "G__"
+                    (swap! *gensym-counter*
+                        (fn* [x] (+ 1 x)))))))
         (defmacro! or
             (fn* (& xs)
                 (if (empty? xs)
                     nil
                     (if (= 1 (count xs))
                         (first xs)
-                        `(let* (or_FIXME ~(first xs))
-                            (if or_FIXME
-                                or_FIXME
-                                (or ~@(rest xs))))))))
+                        (let* (condvar (gensym))
+                            `(let* (~condvar ~(first xs))
+                                (if ~condvar
+                                    ~condvar
+                                    (or ~@(rest xs)))))))))
     """.trimIndent()), ret)
+    ret["*host-language*"] = MalString("kotlin")
 
     return ret
 }
@@ -65,7 +71,9 @@ fun rep(s: String): String = print(eval(read(s), replEnv))
 
 fun main(args: Array<String>) {
 
-    if (args.isNotEmpty()) {
+    if (args.isEmpty()) {
+        rep("""(println (str "Mal [" *host-language* "]"))""")
+    } else {
         val filePath = args[0]
         rep("(load-file \"$filePath\")")
     }

@@ -1,6 +1,7 @@
 package mal
 
 import java.io.File
+import java.util.*
 
 class IllegalArgumentError : Exception()
 
@@ -290,6 +291,106 @@ val ns = hashMapOf(
             val map = it[0] as MalHashMap
 
             map.values()
+        },
+        "readline" to MalFunction.builtin lambda@{
+            if (it.size != 1)
+                return@lambda MalError("one arg expected")
+            val s = it[0] as? MalString ?:
+                return@lambda MalError("arg must be a string")
+            print(s.toString())
+            val input = readLine()
+            if (input != null)
+                MalString(input)
+            else
+                MalNil()
+
+        },
+        "meta" to MalFunction.builtin lambda@{
+            if (it.size != 1)
+                return@lambda MalError("one arg expected")
+            val arg = it[0]
+            when (arg) {
+                is MalMetaDataContainer<*> -> arg.meta
+                else -> MalError("metadata container expected")
+            }
+        },
+        "with-meta" to MalFunction.builtin lambda@{
+            if (it.size != 2)
+                return@lambda MalError("two args expected")
+            val arg = it[0]
+            when (arg) {
+                is MalMetaDataContainer<*> -> arg.withMeta(it[1])
+                else -> MalError("metadata container expected")
+            }
+        },
+        "time-ms" to MalFunction.builtin {
+            MalNumber(Date().time.toInt())
+        },
+        "conj" to MalFunction.builtin lambda@{
+            if (it.size < 2)
+                return@lambda MalError("at least two args expected")
+            if (it[0] !is MalSequence)
+                return@lambda MalError("first arg must be a sequence")
+
+            when (it[0]) {
+                is MalList -> {
+                    it.drop(1).fold(it[0] as MalList) {
+                                acc, elem -> acc.cons(elem)
+                    }
+                }
+                is MalVector -> {
+                    val elements = MalSequence.concat(
+                            it[0] as MalVector,
+                            MalList(it.drop(1))
+                            ).elements
+                    MalVector(elements)
+                }
+                else -> MalError("unsupported type")
+            }
+
+        },
+        "string?" to MalFunction.builtin {
+            MalBoolean(it.size == 1 && it[0] is MalString)
+        },
+        "number?" to MalFunction.builtin {
+            MalBoolean(it.size == 1 && it[0] is MalNumber)
+        },
+        "fn?" to MalFunction.builtin {
+            MalBoolean(it.size == 1 && it[0] is MalFunction
+                    && !(it[0] as MalFunction).isMacro)
+        },
+        "macro?" to MalFunction.builtin {
+            MalBoolean(it.size == 1 && it[0] is MalFunction
+                && (it[0] as MalFunction).isMacro)
+        },
+        "seq" to MalFunction.builtin lambda@{
+            if (it.size != 1)
+                return@lambda MalNil()
+
+            val arg = it[0]
+
+            when (arg) {
+                is MalList -> if (!arg.isEmpty())
+                    arg
+                else
+                    MalNil()
+                is MalVector -> if (!arg.isEmpty())
+                    MalList(arg.elements)
+                else
+                    MalNil()
+                is MalString -> {
+                    val s = arg.value
+                    val elements = mutableListOf<MalType>()
+                    for (ch in s) {
+                        elements += MalString(ch.toString())
+                    }
+                    if (elements.isNotEmpty())
+                        MalList(elements)
+                    else
+                        MalNil()
+                }
+                else -> MalNil()
+            }
         }
 )
 
